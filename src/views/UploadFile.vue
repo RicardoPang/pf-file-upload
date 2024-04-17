@@ -11,6 +11,9 @@
         @click="submitUpload"
         >上传到服务器</el-button
       >
+      <el-button type="warning" size="small" @click="handlePause">{{
+        upload ? '暂停' : '继续'
+      }}</el-button>
     </el-upload>
     <div class="file">
       <div style="font-size: 12px; color: #666">
@@ -37,18 +40,21 @@
 import { computed, ref } from 'vue'
 import pfRequest from '../service'
 import type { UploadProps } from 'element-plus'
-import Worker from '../utils/hash.ts?worker'
+// import Worker from '../utils/hash.ts?worker'
+import Worker from '../utils/hashSample.ts?worker'
 import type { FileSlice } from '@/utils/file'
 import { CHUNK_SIZE } from '@/const'
 import { ElMessage, ElUpload } from 'element-plus'
-import { ConcurrencyPool } from '@/utils/pool'
+import { Scheduler } from '@/utils/scheduler'
 
+const upload = ref<boolean>(true)
 const file = ref<File | null>(null)
 const fileChunks = ref<FileSlice[]>([])
 const hash = ref<string>('')
 const hashProgress = ref<number>(0)
 const uploadProgress = ref<number>(0)
 const uploadRef = ref<InstanceType<typeof ElUpload>>()
+let controller: AbortController | null = null
 
 // 使用Web Worker进行hash计算的函数
 function calculateHash(fileChunks: FileSlice[]): Promise<string> {
@@ -74,13 +80,14 @@ function calculateHash(fileChunks: FileSlice[]): Promise<string> {
 
 async function uploadChunks({
   chunks,
-  hash
+  hash,
+  paralleSize = 3
 }: {
   chunks: FileSlice[]
   hash: string
-  concurrency?: number
+  paralleSize?: number
 }) {
-  const pool = new ConcurrencyPool(4)
+  const scheduler = new Scheduler(paralleSize)
   const totalChunks = chunks.length
   let uploadedChunksCount = 0
 
@@ -92,29 +99,50 @@ async function uploadChunks({
     formData.append('fileHash', hash)
     formData.append('filename', file.value?.name as string)
 
-    await pool.enqueue(async () => {
-      await pfRequest.post({
-        url: '',
-        data: formData,
-        headers: {
-          'content-type': 'multipart/form-data'
-        },
-        onUploadProgress: (progressEvent) => {
-          const { loaded, total } = progressEvent
-          const percent = Math.floor((loaded / (total || 0)) * 100)
-          chunks[chunks.indexOf(chunks[i])].progress = percent
-          const totalProgress =
-            chunks.reduce((sum, chunk) => sum + (chunk.progress || 0), 0) /
-            totalChunks
-          uploadProgress.value = Number(totalProgress.toFixed(2))
+    await scheduler.add(async () => {
+      if (!upload.value) {
+        return
+      }
+      controller = new AbortController()
+      const { signal } = controller
+      // TODO: 这里需要校验每个切片是否已经上传,没有上传才上传，否则跳过
+      // const { shouldUpload } = await verifyUpload(
+      //   file.value?.name as string,
+      //   hash
+      // )
+      // console.log(shouldUpload)
+      try {
+        await pfRequest.post({
+          url: '',
+          data: formData,
+          headers: {
+            'content-type': 'multipart/form-data'
+          },
+          onUploadProgress: (progressEvent) => {
+            const { loaded, total } = progressEvent
+            const percent = Math.floor((loaded / (total || 0)) * 100)
+            chunks[chunks.indexOf(chunks[i])].progress = percent
+            const totalProgress =
+              chunks.reduce((sum, chunk) => sum + (chunk.progress || 0), 0) /
+              totalChunks
+            uploadProgress.value = Number(totalProgress.toFixed(2))
+          },
+          signal
+        })
+        uploadedChunksCount++
+      } catch (error: any) {
+        if (error.name === 'AbortError') {
+          console.log('上传被取消')
+          return
         }
-      })
-      uploadedChunksCount++
+        throw error
+      } finally {
+        controller = null
+      }
 
       // 判断所有切片都已上传完成后，调用mergeRequest方法
       if (uploadedChunksCount === totalChunks) {
         mergeRequest()
-        console.log('上传完成')
       }
     })
   }
@@ -123,11 +151,22 @@ async function uploadChunks({
 async function mergeRequest() {
   await pfRequest.post({
     url: '/merge',
-    data: JSON.stringify({
+    data: {
       filename: file.value?.name as string,
-      size: file.value?.size as number,
+      size: CHUNK_SIZE,
       fileHash: hash.value
-    })
+    }
+  })
+  ElMessage.success('上传成功')
+}
+
+async function verifyUpload(filename: string, fileHash: string) {
+  return await pfRequest.post({
+    url: '/verify',
+    data: {
+      filename,
+      fileHash
+    }
   })
 }
 
@@ -154,14 +193,47 @@ async function submitUpload() {
     cur += CHUNK_SIZE
   }
 
-  // 计算hash
+  // 计算hash 281.2M
+  // 2989.77685546875 ms
+  // 59.903076171875 ms
+  console.time('samplehash')
   hash.value = await calculateHash(chunks)
+  console.timeEnd('samplehash')
   fileChunks.value = chunks
-  // 上传切片
-  await uploadChunks({
-    chunks: fileChunks.value,
-    hash: hash.value
-  })
+  // 校验文件是否已存在
+  const { shouldUpload } = await verifyUpload(file.value.name, hash.value)
+  if (shouldUpload) {
+    await uploadChunks({
+      chunks,
+      hash: hash.value
+    })
+  } else {
+    ElMessage.success('秒传: 文件上传成功')
+  }
+}
+
+async function handlePause() {
+  upload.value = !upload.value
+  if (upload.value) {
+    console.log('继续上传', fileChunks.value)
+    // 校验文件是否已存在
+    const { shouldUpload } = await verifyUpload(
+      file.value?.name as string,
+      hash.value
+    )
+    if (shouldUpload) {
+      await uploadChunks({
+        chunks: fileChunks.value,
+        hash: hash.value
+      })
+    }
+  } else {
+    console.log('暂停上传')
+    if (controller) {
+      controller.abort()
+      controller = null
+    }
+  }
 }
 
 const fileSize = computed(() => {
