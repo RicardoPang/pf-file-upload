@@ -23,12 +23,12 @@
           :percentage="hashProgress > 100 ? 100 : hashProgress"
         ></el-progress>
       </div>
-      <!-- <div class="progress">
+      <div class="progress">
         <span style="font-size: 12px; color: #666">上传进度：</span>
         <el-progress
-          :percentage="hashProgress > 100 ? 100 : hashProgress"
+          :percentage="uploadProgress > 100 ? 100 : uploadProgress"
         ></el-progress>
-      </div> -->
+      </div>
     </div>
   </div>
 </template>
@@ -47,6 +47,7 @@ const file = ref<File | null>(null)
 const fileChunks = ref<FileSlice[]>([])
 const hash = ref<string>('')
 const hashProgress = ref<number>(0)
+const uploadProgress = ref<number>(0)
 const uploadRef = ref<InstanceType<typeof ElUpload>>()
 
 // 使用Web Worker进行hash计算的函数
@@ -80,7 +81,6 @@ async function uploadChunks({
   concurrency?: number
 }) {
   const pool = new ConcurrencyPool(4)
-
   const totalChunks = chunks.length
   let uploadedChunksCount = 0
 
@@ -93,11 +93,20 @@ async function uploadChunks({
     formData.append('filename', file.value?.name as string)
 
     await pool.enqueue(async () => {
-      await await pfRequest.post({
+      await pfRequest.post({
         url: '',
         data: formData,
         headers: {
           'content-type': 'multipart/form-data'
+        },
+        onUploadProgress: (progressEvent) => {
+          const { loaded, total } = progressEvent
+          const percent = Math.floor((loaded / (total || 0)) * 100)
+          chunks[chunks.indexOf(chunks[i])].progress = percent
+          const totalProgress =
+            chunks.reduce((sum, chunk) => sum + (chunk.progress || 0), 0) /
+            totalChunks
+          uploadProgress.value = Number(totalProgress.toFixed(2))
         }
       })
       uploadedChunksCount++
