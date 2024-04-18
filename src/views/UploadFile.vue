@@ -21,12 +21,6 @@
       </div>
       <div style="font-size: 12px; color: #666">文件大小为：{{ fileSize }}</div>
       <div class="progress">
-        <span style="font-size: 12px; color: #666">计算hash：</span>
-        <el-progress
-          :percentage="hashProgress > 100 ? 100 : hashProgress"
-        ></el-progress>
-      </div>
-      <div class="progress">
         <span style="font-size: 12px; color: #666">上传进度：</span>
         <el-progress
           :percentage="uploadProgress > 100 ? 100 : uploadProgress"
@@ -40,7 +34,6 @@
 import { computed, ref } from 'vue'
 import pfRequest from '../service'
 import type { UploadProps } from 'element-plus'
-// import Worker from '../utils/hash.ts?worker'
 import Worker from '../utils/hashSample.ts?worker'
 import type { FileSlice } from '@/utils/file'
 import { CHUNK_SIZE } from '@/const'
@@ -51,7 +44,6 @@ const upload = ref<boolean>(true)
 const file = ref<File | null>(null)
 const fileChunks = ref<FileSlice[]>([])
 const hash = ref<string>('')
-const hashProgress = ref<number>(0)
 const uploadProgress = ref<number>(0)
 const uploadRef = ref<InstanceType<typeof ElUpload>>()
 let controller: AbortController | null = null
@@ -64,8 +56,7 @@ function calculateHash(fileChunks: FileSlice[]): Promise<string> {
     worker.postMessage({ chunks: fileChunks })
 
     worker.onmessage = (e) => {
-      const { progress, hash } = e.data
-      hashProgress.value = Number(progress.toFixed(2))
+      const { hash } = e.data
       if (hash) {
         resolve(hash)
       }
@@ -105,15 +96,9 @@ async function uploadChunks({
       }
       controller = new AbortController()
       const { signal } = controller
-      // TODO: 这里需要校验每个切片是否已经上传,没有上传才上传，否则跳过
-      // const { shouldUpload } = await verifyUpload(
-      //   file.value?.name as string,
-      //   hash
-      // )
-      // console.log(shouldUpload)
       try {
         await pfRequest.post({
-          url: '',
+          url: '/api/upload',
           data: formData,
           headers: {
             'content-type': 'multipart/form-data'
@@ -150,7 +135,7 @@ async function uploadChunks({
 
 async function mergeRequest() {
   await pfRequest.post({
-    url: '/merge',
+    url: '/api/merge',
     data: {
       filename: file.value?.name as string,
       size: CHUNK_SIZE,
@@ -162,7 +147,7 @@ async function mergeRequest() {
 
 async function verifyUpload(filename: string, fileHash: string) {
   return await pfRequest.post({
-    url: '/verify',
+    url: '/api/verify',
     data: {
       filename,
       fileHash
@@ -193,39 +178,51 @@ async function submitUpload() {
     cur += CHUNK_SIZE
   }
 
-  // 计算hash 281.2M
-  // 2989.77685546875 ms
-  // 59.903076171875 ms
-  console.time('samplehash')
+  // 计算hash
   hash.value = await calculateHash(chunks)
-  console.timeEnd('samplehash')
-  fileChunks.value = chunks
+  fileChunks.value = chunks.map((item, index) => ({
+    ...item,
+    hash: `${hash.value}-${index}`,
+    progress: 0
+  }))
   // 校验文件是否已存在
-  const { shouldUpload } = await verifyUpload(file.value.name, hash.value)
-  if (shouldUpload) {
-    await uploadChunks({
-      chunks,
-      hash: hash.value
-    })
+  const resp = await verifyUpload(file.value.name, hash.value)
+  if (resp.code === 0) {
+    const { exists } = resp.data
+    if (!exists) {
+      await uploadChunks({
+        chunks,
+        hash: hash.value
+      })
+    } else {
+      ElMessage.success('秒传: 文件上传成功')
+    }
   } else {
-    ElMessage.success('秒传: 文件上传成功')
+    ElMessage.error('校验文件是否已存在失败')
   }
 }
 
 async function handlePause() {
   upload.value = !upload.value
   if (upload.value) {
-    console.log('继续上传', fileChunks.value)
     // 校验文件是否已存在
-    const { shouldUpload } = await verifyUpload(
-      file.value?.name as string,
-      hash.value
-    )
-    if (shouldUpload) {
-      await uploadChunks({
-        chunks: fileChunks.value,
-        hash: hash.value
-      })
+    const resp = await verifyUpload(file.value?.name as string, hash.value)
+    if (resp.code === 0) {
+      const { exists, existsList } = resp.data
+      const newChunks = fileChunks.value.filter(
+        (item) => !existsList.includes(item.hash)
+      )
+      console.log('newChunks = ', newChunks)
+      if (!exists) {
+        await uploadChunks({
+          chunks: newChunks,
+          hash: hash.value
+        })
+      } else {
+        ElMessage.success('秒传: 文件上传成功')
+      }
+    } else {
+      ElMessage.error('校验文件是否已存在失败')
     }
   } else {
     console.log('暂停上传')

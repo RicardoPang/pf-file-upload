@@ -1,0 +1,25 @@
+{
+  "name": "upload-file-server",
+  "version": "1.0.0",
+  "description": "File upload server",
+  "main": "index.js",
+  "scripts": {
+    "dev": "DEBUG=@demo/* NODE_ENV=development node -r sucrase/register app.ts"
+  },
+  "dependencies": {
+    "koa": "^2.15.0",
+    "koa-body": "^6.0.1",
+    "koa-bodyparser": "^4.4.1",
+    "koa-router": "^12.0.1"
+  },
+  "devDependencies": {
+    "@types/koa": "^2.14.0",
+    "@types/koa__router": "^12.0.4",
+    "@types/koa-bodyparser": "^4.3.12",
+    "@types/node": "^18",
+    "sucrase": "^3.32.0",
+    "typescript": "~5.0.4"
+  },
+  "author": "pangjianfeng",
+  "license": "ISC"
+}
