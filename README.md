@@ -1,39 +1,41 @@
-# pf-file-upload
+## Big File
 
-This template should help get you started developing with Vue 3 in Vite.
+### 前端启动
 
-## Recommended IDE Setup
+- 拉项目
 
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+  ```bash
+  git clone git@github.com:Devil-Training-Camp/pf-file-upload.git
+  ```
 
-## Type Support for `.vue` Imports in TS
+- 执行 npm install
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
+  ```base
+  npm install
+  ```
 
-## Customize configuration
+- 运行项目
 
-See [Vite Configuration Reference](https://vitejs.dev/config/).
+  ```
+  npm run dev
+  ```
 
-## Project Setup
+### 服务端目启动
 
-```sh
-npm install
-```
+- 进入目录
 
-### Compile and Hot-Reload for Development
+  ```bash
+  cd server
+  ```
 
-```sh
-npm run dev
-```
+- 执行 npm install
 
-### Type-Check, Compile and Minify for Production
+  ```base
+  npm install
+  ```
 
-```sh
-npm run build
-```
+- 运行项目
 
-### Lint with [ESLint](https://eslint.org/)
-
-```sh
-npm run lint
-```
+  ```
+  npm run dev
+  ```
