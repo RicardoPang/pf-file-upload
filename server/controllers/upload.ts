@@ -5,15 +5,20 @@ const {
   getChunkDir
 } = require('../utils')
 const { HttpStatus, HttpError } = require('../utils/http-error')
-import type {
-  UploadChunkControllerParams,
-  UploadChunkControllerReponse
+import {
+  fileSizes,
+  type UploadChunkControllerParams,
+  type UploadChunkControllerReponse
 } from '../utils/types'
 const path = require('path')
 const fse = require('fs-extra')
 
+const storeFileSize = async (fileHash: string, size: number): Promise<void> => {
+  fileSizes[fileHash] = size
+}
+
 const fn_upload = async (ctx) => {
-  const { filename, fileHash, hash } = ctx.request.body
+  const { filename, fileHash, hash, size } = ctx.request.body
 
   const chunkFile = ctx.request.files?.chunk.filepath || undefined
   if (!chunkFile || Array.isArray(chunkFile)) {
@@ -37,8 +42,10 @@ const fn_upload = async (ctx) => {
     filename,
     fileHash,
     hash,
-    chunk
+    chunk,
+    size
   } as UploadChunkControllerParams
+  await storeFileSize(fileHash, size)
   const ext = extractExt(params.filename)
   const filePath = path.resolve(UPLOAD_DIR, `${fileHash}${ext}`)
   const chunkDir = getChunkDir(params.fileHash)

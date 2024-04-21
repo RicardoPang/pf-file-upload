@@ -16,6 +16,18 @@ export type VefiryFileControllerResponse = Response<{
   existsList: string[]
 }>
 
+export interface UploadedFileControllerParams {
+  name: string
+  uploadedSize: number
+  totalSize: number
+  time: string
+  hash: string
+}
+
+export type UploadedFileControllerResponse = Response<{
+  files: string[]
+}>
+
 export interface MergeChunksControllerParams {
   filename?: string
   size?: number
@@ -37,9 +49,13 @@ export interface UploadChunkControllerParams {
   chunk?: Buffer
   // 文件名
   filename?: string
+  // 文件大小
+  size?: string
 }
 
 export type UploadChunkControllerReponse = Response<{
   hash: string
   message: string
 }>
+
+export const fileSizes: { [fileHash: string]: number } = {}
