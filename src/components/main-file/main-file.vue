@@ -12,9 +12,9 @@
       <template v-else-if="fileList && fileList.length">
         <fileItem
           v-for="file in fileList"
-          :key="file.hash"
+          :key="file.uid"
           :fileName="file.name"
-          :fileSize="+file.totalSize"
+          :fileSize="file.size"
           :progress="100"
         />
       </template>
@@ -23,6 +23,7 @@
 </template>
 
 <script setup lang="ts">
+import type { UploadFile } from 'element-plus'
 import fileItem from './c-cpns/file-item.vue'
 
 export interface IUploadFile {
@@ -40,7 +41,7 @@ const props = defineProps({
     default: ''
   },
   file: {
-    type: Object as () => IUploadFile,
+    type: Object as () => UploadFile,
     default: null
   },
   progress: {
@@ -48,7 +49,7 @@ const props = defineProps({
     default: 0
   },
   fileList: {
-    type: Array as () => IUploadFile[],
+    type: Array as () => UploadFile[],
     default: () => []
   }
 })

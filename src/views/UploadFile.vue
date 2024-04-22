@@ -32,94 +32,38 @@
     </div>
     <div class="file-wrapper">
       <template v-if="file">
-        <h2 class="file-title">上传中</h2>
-        <ul class="file-container">
-          <li class="file-item">
-            <div class="file-item-top">
-              <span>{{ file.name }} {{ fileSize(file.size) }}</span>
-            </div>
-            <div class="file-item-progress">
-              <el-progress
-                :percentage="uploadProgress > 100 ? 100 : uploadProgress"
-                :show-text="false"
-                :color="'#265AEB'"
-                :stroke-width="10"
-              >
-              </el-progress>
-            </div>
-            <div class="file-item-value">
-              <span class="percentage-value">{{ uploadProgress }}% done</span>
-            </div>
-          </li>
-        </ul>
+        <MainFile title="上传中" :file="file" :progress="uploadProgress" />
       </template>
-
-      <template v-if="uploadedFileList && uploadedFileList.length">
-        <h2 class="file-title">已上传</h2>
-        <ul class="file-container">
-          <li
-            class="file-item"
-            v-for="file in uploadedFileList"
-            :key="file.uid"
-          >
-            <div class="file-item-top">
-              <span>{{ file.name }} {{ fileSize(file.size) }}</span>
-            </div>
-            <div class="file-item-progress">
-              <el-progress
-                :percentage="fileProgress(file)"
-                :show-text="false"
-                :color="'#265AEB'"
-                :stroke-width="10"
-              >
-              </el-progress>
-            </div>
-            <div class="file-item-value">
-              <span class="percentage-value"
-                >{{ fileProgress(file) }}% done</span
-              >
-            </div>
-          </li>
-        </ul>
+      <template v-if="files && files.length">
+        <MainFile title="已上传" :fileList="files" />
       </template>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import pfRequest from '../service'
+import { ref } from 'vue'
 import type { UploadFile, UploadProps } from 'element-plus'
 import Worker from '../utils/hash.ts?worker'
 import type { FileSlice } from '@/utils/file'
 import { CHUNK_SIZE } from '@/const'
 import { ElMessage, ElUpload } from 'element-plus'
 import { Scheduler } from '@/utils/scheduler'
+import MainFile from '@/components/main-file/main-file.vue'
+import useFileStore from '@/store/file/file'
+import { storeToRefs } from 'pinia'
 
 const upload = ref<boolean>(true)
 const file = ref<UploadFile | null>(null)
-const uploadedFileList = ref<UploadFile[]>([])
 const fileChunks = ref<FileSlice[]>([])
 const hash = ref<string>('')
 const uploadProgress = ref<number>(0)
 const uploadRef = ref<InstanceType<typeof ElUpload>>()
 let controller: AbortController | null = null
 
-onMounted(() => {
-  getFiles()
-})
-
-async function getFiles() {
-  const res = await pfRequest.get({ url: '/api/files' })
-  const files = (res.data && res.data.files) || []
-
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i]
-    if (+file.uploadedSize === +file.totalSize) {
-      uploadedFileList.value.push(file)
-    }
-  }
-}
+const fileStore = useFileStore()
+fileStore.getFilesAction()
+const { files } = storeToRefs(fileStore)
 
 // 使用Web Worker进行hash计算的函数
 function calculateHash(fileChunks: FileSlice[]): Promise<string> {
@@ -152,8 +96,6 @@ async function uploadChunks({
   const totalChunks = chunks.length
   let uploadedChunksCount = 0
 
-  console.log(fileChunks.value)
-
   for (let i = 0; i < chunks.length; i++) {
     const { chunk } = chunks[i]
 
@@ -178,23 +120,17 @@ async function uploadChunks({
       controller = new AbortController()
       const { signal } = controller
       try {
-        await pfRequest.post({
-          url: '/api/upload',
-          data: formData,
-          headers: {
-            'content-type': 'multipart/form-data'
-          },
-          onUploadProgress: (progressEvent) => {
-            const { loaded, total } = progressEvent
-            const percent = Math.floor((loaded / (total || 0)) * 100)
-            chunks[chunks.indexOf(chunks[i])].progress = percent
-            const totalProgress =
-              chunks.reduce((sum, chunk) => sum + (chunk.progress || 0), 0) /
-              totalChunks
-            uploadProgress.value = Number(totalProgress.toFixed(2))
+        await fileStore.uploadChunkAction(
+          {
+            formData,
+            onProgress: (progress: number) => {
+              uploadProgress.value = progress
+            },
+            chunks,
+            index: i
           },
           signal
-        })
+        )
         uploadedChunksCount++
       } catch (error: any) {
         if (error.name === 'AbortError') {
@@ -215,31 +151,18 @@ async function uploadChunks({
 }
 
 async function mergeRequest() {
-  await pfRequest.post({
-    url: '/api/merge',
-    data: {
-      filename: file.value?.name as string,
-      size: CHUNK_SIZE,
-      fileHash: hash.value
-    }
+  await fileStore.mergeFileAction({
+    filename: file.value?.name as string,
+    size: CHUNK_SIZE,
+    fileHash: hash.value
   })
-  ElMessage.success('上传成功')
   file.value = null
-  uploadedFileList.value = []
-  getFiles()
+  fileStore.getFilesAction()
+  const { files } = storeToRefs(fileStore)
+  console.log(files.value)
 }
 
-async function verifyUpload(filename: string, fileHash: string) {
-  return await pfRequest.post({
-    url: '/api/verify',
-    data: {
-      filename,
-      fileHash
-    }
-  })
-}
-
-const handleChange: UploadProps['onChange'] = (uploadFile, uploadFiles) => {
+const handleChange: UploadProps['onChange'] = (uploadFile) => {
   file.value = uploadFile
   uploadProgress.value = 0
 }
@@ -270,19 +193,18 @@ async function submitUpload() {
     progress: 0
   }))
   // 校验文件是否已存在
-  const resp = await verifyUpload(file.value.name, hash.value)
-  if (resp.code === 0) {
-    const { exists } = resp.data
-    if (!exists) {
-      await uploadChunks({
-        chunks,
-        hash: hash.value
-      })
-    } else {
-      ElMessage.success('秒传: 文件上传成功')
-    }
+  await fileStore.verifyFileAction({
+    filename: file.value.name,
+    fileHash: hash.value
+  })
+  const { exists } = storeToRefs(fileStore)
+  if (!exists.value) {
+    await uploadChunks({
+      chunks,
+      hash: hash.value
+    })
   } else {
-    ElMessage.error('校验文件是否已存在失败')
+    ElMessage.success('秒传: 文件上传成功')
   }
 }
 
@@ -293,22 +215,21 @@ async function handlePause() {
     if (!file.value?.name) {
       return
     }
-    const resp = await verifyUpload(file.value?.name as string, hash.value)
-    if (resp.code === 0) {
-      const { exists, existsList } = resp.data
-      const newChunks = fileChunks.value.filter(
-        (item) => !existsList.includes(item.hash)
-      )
-      if (!exists) {
-        await uploadChunks({
-          chunks: newChunks,
-          hash: hash.value
-        })
-      } else {
-        ElMessage.success('秒传: 文件上传成功')
-      }
+    await fileStore.verifyFileAction({
+      filename: file.value.name,
+      fileHash: hash.value
+    })
+    const { exists, existsList } = storeToRefs(fileStore)
+    const newChunks = fileChunks.value.filter(
+      (item) => !existsList.value.includes(item.hash)
+    )
+    if (!exists.value) {
+      await uploadChunks({
+        chunks: newChunks,
+        hash: hash.value
+      })
     } else {
-      ElMessage.error('校验文件是否已存在失败')
+      ElMessage.success('秒传: 文件上传成功')
     }
   } else {
     console.log('暂停上传')
@@ -317,24 +238,6 @@ async function handlePause() {
       controller = null
     }
   }
-}
-
-function fileSize(size?: number | undefined) {
-  if (!size) {
-    return ''
-  }
-  size = +size
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  let i = 0
-  while (size >= 1024 && i < sizes.length - 1) {
-    size /= 1024
-    i++
-  }
-  return `${size.toFixed(2)} ${sizes[i]}`
-}
-
-const fileProgress = (file: any) => {
-  return +((file.uploadedSize / file.totalSize) * 100).toFixed(2)
 }
 </script>
 
@@ -393,43 +296,6 @@ const fileProgress = (file: any) => {
 
   .file-wrapper {
     padding-left: 48px;
-
-    .file-title {
-      font-size: 16px;
-      line-height: 24px;
-      color: #4b5563;
-      font-weight: 600;
-      margin: 16px 0;
-    }
-
-    .file-container {
-      width: 344px;
-      max-height: 60vh;
-      overflow-y: auto;
-      margin-top: 10px;
-
-      .file-item {
-        display: flex;
-        flex-direction: column;
-        margin-top: 32px;
-        color: #6b7280;
-        font-weight: 600;
-
-        .file-item-top {
-          display: flex;
-          margin-bottom: 8px;
-        }
-        .file-item-top span {
-          flex: 1;
-        }
-        .file-item-value {
-          margin-top: 8px;
-        }
-      }
-      .file-item:first-child {
-        margin-top: 0;
-      }
-    }
   }
 }
 </style>

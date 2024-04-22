@@ -8,9 +8,7 @@ export interface IUploadFile {
 }
 
 export interface IFileUploadState {
-  hash: string
-  message: string
   exists: boolean
-  existsList: string[] // 已上传切片列表
-  fileList: IUploadFile[] // 已上传文件列表
+  existsList: any // 已上传切片列表
+  files: any[] // 已上传文件列表
 }
