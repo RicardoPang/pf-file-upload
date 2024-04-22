@@ -90,7 +90,7 @@
 import { onMounted, ref } from 'vue'
 import pfRequest from '../service'
 import type { UploadFile, UploadProps } from 'element-plus'
-import Worker from '../utils/hashSample.ts?worker'
+import Worker from '../utils/hash.ts?worker'
 import type { FileSlice } from '@/utils/file'
 import { CHUNK_SIZE } from '@/const'
 import { ElMessage, ElUpload } from 'element-plus'
@@ -290,6 +290,9 @@ async function handlePause() {
   upload.value = !upload.value
   if (upload.value) {
     // 校验文件是否已存在
+    if (!file.value?.name) {
+      return
+    }
     const resp = await verifyUpload(file.value?.name as string, hash.value)
     if (resp.code === 0) {
       const { exists, existsList } = resp.data

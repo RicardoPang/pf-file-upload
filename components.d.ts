@@ -12,6 +12,8 @@ declare module 'vue' {
     ElInput: typeof import('element-plus/es')['ElInput']
     ElProgress: typeof import('element-plus/es')['ElProgress']
     ElUpload: typeof import('element-plus/es')['ElUpload']
+    FileItem: typeof import('./src/components/main-file/c-cpns/file-item.vue')['default']
+    MainFile: typeof import('./src/components/main-file/main-file.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
   }

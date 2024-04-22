@@ -1,35 +1,40 @@
 // 导入脚本
 import SparkMD5 from 'spark-md5'
-import { type FileSlice } from './file'
 
-self.onmessage = async (e) => {
+const ctx: Worker = self as any
+ctx.onmessage = (e) => {
   // 接收主线程的通知
-  const { chunks } = e.data as { chunks: FileSlice[] }
+  const { chunks } = e.data
+  const blob = new Blob(chunks)
   const spark = new SparkMD5.ArrayBuffer()
-  let progress = 0
-  let count = 0
+  const reader = new FileReader()
 
-  const loadNext = (index: number) => {
-    const reader = new FileReader()
-    reader.readAsArrayBuffer(chunks[index].chunk)
-    reader.onload = (e) => {
-      count++
-      spark.append(e.target?.result as ArrayBuffer)
-      if (count === chunks.length) {
-        self.postMessage({
-          progress: 100,
-          hash: spark.end()
-        })
-        self.close()
-      } else {
-        progress += 100 / chunks.length
-        self.postMessage({
-          progress
-        })
-        loadNext(count)
-      }
+  reader.onload = (e) => {
+    spark.append(e.target?.result as ArrayBuffer)
+    const hash = spark.end()
+    ctx.postMessage({
+      progress: 100,
+      hash
+    })
+  }
+  reader.onerror = (e: any) => {
+    ctx.postMessage({
+      error: e.message
+    })
+  }
+  reader.onprogress = (e) => {
+    if (e.lengthComputable) {
+      const progress = (e.loaded / e.total) * 100
+      ctx.postMessage({
+        progress
+      })
     }
   }
-
-  loadNext(0)
+  // 读取Blob对象的内容
+  reader.readAsArrayBuffer(blob)
+}
+ctx.onerror = (e) => {
+  ctx.postMessage({
+    error: e.message
+  })
 }
