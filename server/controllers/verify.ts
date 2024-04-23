@@ -1,24 +1,29 @@
-const {
-  isValidString,
-  extractExt,
-  UPLOAD_DIR,
-  getUploadedList,
-  getChunkDir
-} = require('../utils')
-const { HttpStatus, HttpError } = require('../utils/http-error')
-import { Context } from 'vm'
+import { type Context } from 'koa'
 import {
-  fileSizes,
   type UploadedFileControllerParams,
   type UploadedFileControllerResponse,
   type VefiryFileControllerParams,
   type VefiryFileControllerResponse
 } from '../utils/types'
+import fileSizesStore from '../utils/fileSizesStore'
+import { HttpError, HttpStatus } from '../utils/http-error'
+import {
+  UPLOAD_DIR,
+  extractExt,
+  getChunkDir,
+  getUploadedList,
+  isValidString
+} from '../utils'
+import { IMiddleware } from 'koa-router'
+import { Controller } from '../controller'
 
 const path = require('path')
 const fse = require('fs-extra')
 
-const fn_verify = async (ctx) => {
+const fn_verify: IMiddleware = async (
+  ctx: Context,
+  next: () => Promise<void>
+) => {
   const { filename, fileHash } = ctx.request.body as VefiryFileControllerParams
   if (!isValidString(fileHash)) {
     throw new HttpError(HttpStatus.PARAMS_ERROR, 'fileHash 不能为空')
@@ -33,20 +38,21 @@ const fn_verify = async (ctx) => {
   if (fse.existsSync(filePath)) {
     isExist = true
   } else {
-    existsList = await getUploadedList(fileHash)
+    existsList = await getUploadedList(fileHash!)
   }
   ctx.body = {
     code: 0,
     data: { exists: isExist, existsList: existsList }
   } satisfies VefiryFileControllerResponse
-}
 
-const getTotalSizeByFileHash = async (fileHash: string): Promise<number> => {
-  return fileSizes[fileHash] || 0
+  await next()
 }
 
 // 获取所有已上传文件的接口
-const fn_getFiles = async (ctx: Context): Promise<void> => {
+const fn_getFiles: IMiddleware = async (
+  ctx: Context,
+  next: () => Promise<void>
+): Promise<void> => {
   const files = await fse.readdir(UPLOAD_DIR).catch(() => [])
   const fileListPromises = files.map(async (file) => {
     const filePath = path.resolve(UPLOAD_DIR, file)
@@ -55,7 +61,7 @@ const fn_getFiles = async (ctx: Context): Promise<void> => {
     let fileHash = ''
     let size = stat.size
     if (file.includes('chunkDir_')) {
-      fileHash = file.slice(9)
+      fileHash = file.slice('chunkDir_'.length)
       const chunkDir = getChunkDir(fileHash)
       const chunks = await fse.readdir(chunkDir)
       size = chunks.reduce((totalSize, chunk) => {
@@ -66,7 +72,7 @@ const fn_getFiles = async (ctx: Context): Promise<void> => {
     } else {
       fileHash = file.slice(0, file.length - ext.length)
     }
-    const total = await getTotalSizeByFileHash(fileHash)
+    const total = await fileSizesStore.getFileSize(fileHash)
     return {
       name: file,
       uploadedSize: size,
@@ -80,9 +86,21 @@ const fn_getFiles = async (ctx: Context): Promise<void> => {
     code: 0,
     data: { files: fileList }
   } satisfies UploadedFileControllerResponse
+
+  await next()
 }
 
-module.exports = {
-  'GET /api/files': fn_getFiles,
-  'POST /api/verify': fn_verify
-}
+const controllers: Controller[] = [
+  {
+    method: 'POST',
+    path: '/api/verify',
+    fn: fn_verify
+  },
+  {
+    method: 'GET',
+    path: '/api/files',
+    fn: fn_getFiles
+  }
+]
+
+export default controllers

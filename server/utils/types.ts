@@ -53,9 +53,7 @@ export interface UploadChunkControllerParams {
   size?: string
 }
 
-export type UploadChunkControllerReponse = Response<{
+export type UploadChunkControllerResponse = Response<{
   hash: string
   message: string
 }>
-
-export const fileSizes: { [fileHash: string]: number } = {}

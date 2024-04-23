@@ -1,17 +1,14 @@
-const {
-  isValidString,
-  extractExt,
-  UPLOAD_DIR,
-  getChunkDir
-} = require('../utils')
-const { HttpStatus, HttpError } = require('../utils/http-error')
+import { UPLOAD_DIR, extractExt, getChunkDir, isValidString } from '../utils'
+import { HttpError, HttpStatus } from '../utils/http-error'
 import type {
   MergeChunksControllerParams,
   MergeChunksControllerResponse
 } from '../utils/types'
-
-const path = require('path')
-const fse = require('fs-extra')
+import path from 'path'
+import fse from 'fs-extra'
+import { IMiddleware } from 'koa-router'
+import { Controller } from '../controller'
+import { Context } from 'koa'
 
 // 写入文件流
 const pipeStream = (
@@ -31,7 +28,7 @@ const pipeStream = (
 const mergeFileChunk = async (
   filePath: string,
   fileHash: string,
-  size: number = 10485760
+  size: number
 ) => {
   const chunkDir = getChunkDir(fileHash)
   const chunkPaths = await fse.readdir(chunkDir)
@@ -55,28 +52,35 @@ const mergeFileChunk = async (
   fse.rmdirSync(chunkDir)
 }
 
-const fn_merge = async (ctx) => {
+const fn_merge: IMiddleware = async (
+  ctx: Context,
+  next: () => Promise<void>
+) => {
   const { filename, fileHash, size } = ctx.request
     .body as MergeChunksControllerParams
   if (!isValidString(fileHash)) {
-    throw new HttpError(
-      HttpStatus.PARAMS_ERROR,
-      'fileHash 不能为空: ',
-      fileHash
-    )
+    throw new HttpError(HttpStatus.PARAMS_ERROR, 'fileHash 不能为空: ')
   }
   if (!isValidString(filename)) {
     throw new HttpError(HttpStatus.PARAMS_ERROR, 'filename 不能为空')
   }
   const ext = extractExt(filename!)
   const filePath = path.resolve(UPLOAD_DIR, `${fileHash}${ext}`)
-  await mergeFileChunk(filePath, fileHash!, size)
+  await mergeFileChunk(filePath, fileHash!, size!)
   ctx.body = {
     code: 0,
     data: { hash: fileHash!, message: 'file merged success' }
   } satisfies MergeChunksControllerResponse
+
+  await next()
 }
 
-module.exports = {
-  'POST /api/merge': fn_merge
-}
+const controllers: Controller[] = [
+  {
+    method: 'POST',
+    path: '/api/merge',
+    fn: fn_merge
+  }
+]
+
+export default controllers

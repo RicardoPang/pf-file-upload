@@ -15,7 +15,7 @@
           :key="file.uid"
           :fileName="file.name"
           :fileSize="file.size"
-          :progress="100"
+          :progress="fileProgress(file)"
         />
       </template>
     </div>
@@ -35,7 +35,7 @@ export interface IUploadFile {
   uploadedSize: number
 }
 
-const props = defineProps({
+defineProps({
   title: {
     type: String,
     default: ''
@@ -54,7 +54,9 @@ const props = defineProps({
   }
 })
 
-console.log(props.fileList)
+const fileProgress = (file: any) => {
+  return +((file.uploadedSize / file.totalSize) * 100).toFixed(2)
+}
 </script>
 
 <style lang="less" scoped>
