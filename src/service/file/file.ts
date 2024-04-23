@@ -2,6 +2,15 @@ import pfRequest from '..'
 import type { IMerge, IUpload, IVerify } from '@/types/file'
 
 export function upload(file: IUpload, signal?: AbortSignal) {
+  const {
+    formData: { chunk, hash, fileHash, filename, size }
+  } = file
+  const formData = new FormData()
+  formData.append('chunk', chunk)
+  formData.append('hash', hash)
+  formData.append('fileHash', fileHash)
+  formData.append('filename', filename)
+  formData.append('size', String(size))
   return pfRequest.post({
     url: '/api/upload',
     data: file.formData,

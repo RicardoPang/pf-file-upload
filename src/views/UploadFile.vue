@@ -7,7 +7,6 @@
           :action="''"
           :auto-upload="false"
           :show-file-list="false"
-          ref="uploadRef"
           drag
           multiple
         >
@@ -52,17 +51,19 @@ import { Scheduler } from '@/utils/scheduler'
 import MainFile from '@/components/main-file/main-file.vue'
 import useFileStore from '@/store/file/file'
 import { storeToRefs } from 'pinia'
+import type { SaveChunkControllerParams } from '@/types/file'
 
 const upload = ref<boolean>(true)
 const file = ref<UploadFile | null>(null)
 const fileChunks = ref<FileSlice[]>([])
 const hash = ref<string>('')
 const uploadProgress = ref<number>(0)
-const uploadRef = ref<InstanceType<typeof ElUpload>>()
 let controller: AbortController | null = null
 
+// 发起数据请求
 const fileStore = useFileStore()
 fileStore.getFilesAction()
+// 从store获取数据
 const { files } = storeToRefs(fileStore)
 
 // 使用Web Worker进行hash计算的函数
@@ -83,6 +84,7 @@ function calculateHash(fileChunks: FileSlice[]): Promise<string> {
   })
 }
 
+// 切片上传
 async function uploadChunks({
   chunks,
   hash,
@@ -106,12 +108,13 @@ async function uploadChunks({
       h = `${hash}-${chunks.indexOf(chunks[i])}`
     }
 
-    const formData = new FormData()
-    formData.append('chunk', chunk)
-    formData.append('hash', h)
-    formData.append('fileHash', hash)
-    formData.append('filename', file.value?.name as string)
-    formData.append('size', String(file.value?.size))
+    const params = {
+      chunk,
+      hash: h,
+      fileHash: hash,
+      filename: file.value?.name as string,
+      size: file.value?.size
+    } as SaveChunkControllerParams
 
     await scheduler.add(async () => {
       if (!upload.value) {
@@ -122,7 +125,7 @@ async function uploadChunks({
       try {
         await fileStore.uploadChunkAction(
           {
-            formData,
+            formData: params,
             onProgress: (progress: number) => {
               uploadProgress.value = progress
             },
@@ -150,6 +153,7 @@ async function uploadChunks({
   }
 }
 
+// 合并切片请求
 async function mergeRequest() {
   await fileStore.mergeFileAction({
     filename: file.value?.name as string,
@@ -162,11 +166,13 @@ async function mergeRequest() {
   console.log(files.value)
 }
 
+// 文件上传
 const handleChange: UploadProps['onChange'] = (uploadFile) => {
   file.value = uploadFile
   uploadProgress.value = 0
 }
 
+// 文件上传服务器
 async function submitUpload() {
   if (!file.value) {
     ElMessage.error('Oops, 请您选择文件后再操作~~.')
@@ -208,6 +214,7 @@ async function submitUpload() {
   }
 }
 
+// 上传暂停和继续
 async function handlePause() {
   upload.value = !upload.value
   if (upload.value) {
