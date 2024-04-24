@@ -1,19 +1,13 @@
-import type { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios'
-
-interface CustomError {
-  message: string
-  code: number
-}
+import type { AxiosRequestConfig, AxiosResponse } from 'axios'
 
 // 针对AxiosRequestConfig配置进行扩展
-export interface PFInterceptors<T extends AxiosResponse = AxiosResponse> {
+export interface PFInterceptors<T = AxiosResponse> {
   requestSuccessFn?: (config: AxiosRequestConfig) => AxiosRequestConfig
-  requestFailureFn?: (err: AxiosError) => CustomError
+  requestFailureFn?: (err: any) => any
   responseSuccessFn?: (res: T) => T
-  responseFailureFn?: (err: AxiosError) => CustomError
+  responseFailureFn?: (err: any) => any
 }
 
-export interface PFRequestConfig<T extends AxiosResponse = AxiosResponse>
-  extends AxiosRequestConfig {
+export interface PFRequestConfig<T = AxiosResponse> extends AxiosRequestConfig {
   interceptors?: PFInterceptors<T>
 }
