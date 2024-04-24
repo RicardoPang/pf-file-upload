@@ -5,7 +5,7 @@
       <template v-if="file">
         <fileItem
           :fileName="file.name"
-          :fileSize="file.size"
+          :fileSize="fileSize(file)"
           :progress="progress"
         />
       </template>
@@ -14,7 +14,7 @@
           v-for="file in fileList"
           :key="file.uid"
           :fileName="file.name"
-          :fileSize="file.size"
+          :fileSize="fileSize(file)"
           :progress="fileProgress(file)"
         />
       </template>
@@ -53,6 +53,21 @@ defineProps({
     default: () => []
   }
 })
+
+function fileSize(file: any) {
+  let size = file.size ? file.size : file.totalSize
+  if (!size) {
+    return ''
+  }
+  size = +size
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  let i = 0
+  while (size >= 1024 && i < sizes.length - 1) {
+    size /= 1024
+    i++
+  }
+  return `${size.toFixed(2)} ${sizes[i]}`
+}
 
 const fileProgress = (file: any) => {
   return +((file.uploadedSize / file.totalSize) * 100).toFixed(2)

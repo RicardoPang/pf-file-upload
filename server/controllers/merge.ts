@@ -52,7 +52,7 @@ const mergeFileChunk = async (
   fse.rmdirSync(chunkDir)
 }
 
-const fn_merge: IMiddleware = async (
+const fnMerge: IMiddleware = async (
   ctx: Context,
   next: () => Promise<void>
 ) => {
@@ -79,7 +79,7 @@ const controllers: Controller[] = [
   {
     method: 'POST',
     path: '/api/merge',
-    fn: fn_merge
+    fn: fnMerge
   }
 ]
 

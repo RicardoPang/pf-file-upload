@@ -1,7 +1,7 @@
 <template>
   <div class="file-item">
     <div class="file-item-top">
-      <span>{{ fileName }} {{ formatFileSize(fileSize) }}</span>
+      <span>{{ fileName }} {{ fileSize }}</span>
     </div>
     <div class="file-item-progress">
       <el-progress
@@ -25,28 +25,14 @@ defineProps({
     default: null
   },
   fileSize: {
-    type: Number,
-    default: 0
+    type: String,
+    default: '0'
   },
   progress: {
     type: Number,
     default: 0
   }
 })
-
-function formatFileSize(size) {
-  if (!size) {
-    return ''
-  }
-  size = +size
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  let i = 0
-  while (size >= 1024 && i < sizes.length - 1) {
-    size /= 1024
-    i++
-  }
-  return `${size.toFixed(2)} ${sizes[i]}`
-}
 </script>
 
 <style lang="less" scoped>

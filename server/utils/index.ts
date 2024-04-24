@@ -1,5 +1,5 @@
-const fse = require('fs-extra')
-const path = require('path')
+import fse from 'fs-extra'
+import path from 'path'
 
 export const isValidString = (s) => typeof s === 'string' && s.length > 0
 

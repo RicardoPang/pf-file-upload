@@ -1,6 +1,7 @@
 import Router from 'koa-router'
 import fs from 'fs/promises'
 import { IMiddleware } from 'koa-router'
+import path from 'path'
 
 export interface Controller {
   method: 'GET' | 'POST' | 'PUT' | 'DELETE'
@@ -44,7 +45,7 @@ function addControllers(router: Router, dir: string) {
         .filter((f) => f.endsWith('.ts'))
         .forEach(async (f) => {
           console.log(`process controller: ${f}...`)
-          const module = await import(__dirname + '/' + dir + '/' + f)
+          const module = await import(path.resolve(__dirname, dir, f))
           const controllersArray = module.default as Controller[]
           addMapping(router, controllersArray)
         })

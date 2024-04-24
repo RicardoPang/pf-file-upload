@@ -17,10 +17,10 @@ import {
 import { IMiddleware } from 'koa-router'
 import { Controller } from '../controller'
 
-const path = require('path')
-const fse = require('fs-extra')
+import path from 'path'
+import fse from 'fs-extra'
 
-const fn_verify: IMiddleware = async (
+const fnVerify: IMiddleware = async (
   ctx: Context,
   next: () => Promise<void>
 ) => {
@@ -49,38 +49,40 @@ const fn_verify: IMiddleware = async (
 }
 
 // 获取所有已上传文件的接口
-const fn_getFiles: IMiddleware = async (
+const fnGetFile: IMiddleware = async (
   ctx: Context,
   next: () => Promise<void>
 ): Promise<void> => {
   const files = await fse.readdir(UPLOAD_DIR).catch(() => [])
-  const fileListPromises = files.map(async (file) => {
-    const filePath = path.resolve(UPLOAD_DIR, file)
-    const stat = fse.statSync(filePath)
-    const ext = extractExt(file)
-    let fileHash = ''
-    let size = stat.size
-    if (file.includes('chunkDir_')) {
-      fileHash = file.slice('chunkDir_'.length)
-      const chunkDir = getChunkDir(fileHash)
-      const chunks = await fse.readdir(chunkDir)
-      size = chunks.reduce((totalSize, chunk) => {
-        const chunkPath = path.resolve(chunkDir, chunk)
-        const stat = fse.statSync(chunkPath)
-        return totalSize + stat.size
-      }, 0)
-    } else {
-      fileHash = file.slice(0, file.length - ext.length)
-    }
-    const total = await fileSizesStore.getFileSize(fileHash)
-    return {
-      name: file,
-      uploadedSize: size,
-      totalSize: total,
-      time: stat.mtime.toISOString(),
-      hash: fileHash
-    } as UploadedFileControllerParams
-  })
+  const fileListPromises = files
+    .filter((file) => !file.endsWith('.json'))
+    .map(async (file) => {
+      const filePath = path.resolve(UPLOAD_DIR, file)
+      const stat = fse.statSync(filePath)
+      const ext = extractExt(file)
+      let fileHash = ''
+      let size = stat.size
+      if (file.includes('chunkDir_')) {
+        fileHash = file.slice('chunkDir_'.length)
+        const chunkDir = getChunkDir(fileHash)
+        const chunks = await fse.readdir(chunkDir)
+        size = chunks.reduce((totalSize, chunk) => {
+          const chunkPath = path.resolve(chunkDir, chunk)
+          const stat = fse.statSync(chunkPath)
+          return totalSize + stat.size
+        }, 0)
+      } else {
+        fileHash = file.slice(0, file.length - ext.length)
+      }
+      const total = await fileSizesStore.getFileSize(fileHash)
+      return {
+        name: file,
+        uploadedSize: size,
+        totalSize: total,
+        time: stat.mtime.toISOString(),
+        hash: fileHash
+      } as UploadedFileControllerParams
+    })
   const fileList = await Promise.all(fileListPromises)
   ctx.body = {
     code: 0,
@@ -94,12 +96,12 @@ const controllers: Controller[] = [
   {
     method: 'POST',
     path: '/api/verify',
-    fn: fn_verify
+    fn: fnVerify
   },
   {
     method: 'GET',
     path: '/api/files',
-    fn: fn_getFiles
+    fn: fnGetFile
   }
 ]
 

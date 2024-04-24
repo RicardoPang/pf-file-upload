@@ -8,12 +8,11 @@ import {
 } from '../utils/types'
 import path from 'path'
 import fse from 'fs-extra'
-import fs from 'fs'
 import { Controller } from '../controller'
 import { Context } from 'koa'
 import koaBody from 'koa-body'
 
-const fn_upload: IMiddleware = async (
+const fnUpload: IMiddleware = async (
   ctx: Context,
   next: () => Promise<void>
 ) => {
@@ -47,19 +46,12 @@ const fn_upload: IMiddleware = async (
   const chunkDir = getChunkDir(params.fileHash!)
   const chunkPath = path.resolve(chunkDir, params.hash!)
   // 切片目录不存在，创建切片目录
-  if (!fse.existsSync(chunkDir)) {
-    fs.promises
-      .mkdir(chunkDir, { recursive: true })
-      .then(async () => {
-        console.log('切片目录已创建')
-      })
-      .catch((err) => {
-        console.error('创建切片目录时出错:', err)
-      })
+  if (!(await fse.pathExists(chunkDir))) {
+    await fse.mkdir(chunkDir, { recursive: true })
   }
 
   // 文件存在直接返回
-  if (fse.existsSync(filePath)) {
+  if (await fse.pathExists(filePath)) {
     ctx.body = {
       code: 1,
       data: { hash: fileHash!, message: 'file exist' }
@@ -67,9 +59,9 @@ const fn_upload: IMiddleware = async (
     return
   }
   // 切片存在直接返回
-  if (fse.existsSync(chunkPath)) {
+  if (await fse.pathExists(chunkPath)) {
     ctx.body = {
-      code: 1,
+      code: 2,
       data: { hash: fileHash!, message: 'chunk exist' }
     } satisfies UploadChunkControllerResponse
     return
@@ -87,7 +79,7 @@ const controllers: Controller[] = [
   {
     method: 'POST',
     path: '/api/upload',
-    fn: fn_upload,
+    fn: fnUpload,
     middleware: [koaBody({ multipart: true })]
   }
 ]

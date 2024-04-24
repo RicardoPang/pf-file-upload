@@ -84,17 +84,17 @@ function calculateHash(fileChunks: FileSlice[]): Promise<string> {
   })
 }
 
-// 切片上传
+// 切片上传 limit-限制并发数
 async function uploadChunks({
   chunks,
   hash,
-  paralleSize = 3
+  limit = 3
 }: {
   chunks: FileSlice[]
   hash: string
-  paralleSize?: number
+  limit?: number
 }) {
-  const scheduler = new Scheduler(paralleSize)
+  const scheduler = new Scheduler(limit)
   const totalChunks = chunks.length
   let uploadedChunksCount = 0
 
