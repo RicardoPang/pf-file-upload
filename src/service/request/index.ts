@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { AxiosInstance } from 'axios'
+import type { AxiosInstance, AxiosResponse } from 'axios'
 import type { PFRequestConfig } from './type'
 
 // 拦截器: 蒙版Loading/token/修改配置
@@ -53,7 +53,7 @@ class PFRequest {
 
   // 封装网络请求的方法
   // T => IHomeData
-  request<T = any>(config: PFRequestConfig<T>) {
+  request<T extends AxiosResponse>(config: PFRequestConfig<T>): Promise<T> {
     // 单次请求的成功拦截处理
     if (config.interceptors?.requestSuccessFn) {
       config = config.interceptors.requestSuccessFn(config)
@@ -65,7 +65,7 @@ class PFRequest {
         .request<any, T>(config)
         .then((res) => {
           if (config.interceptors?.responseSuccessFn) {
-            res = config.interceptors.responseSuccessFn(res) as T
+            res = config.interceptors.responseSuccessFn(res)
           }
           resolve(res)
         })
@@ -75,16 +75,16 @@ class PFRequest {
     })
   }
 
-  get<T = any>(config: PFRequestConfig<T>) {
+  get<T extends AxiosResponse>(config: PFRequestConfig<T>): Promise<T> {
     return this.request({ ...config, method: 'GET' })
   }
-  post<T = any>(config: PFRequestConfig<T>) {
+  post<T extends AxiosResponse>(config: PFRequestConfig<T>): Promise<T> {
     return this.request({ ...config, method: 'POST' })
   }
-  delete<T = any>(config: PFRequestConfig<T>) {
+  delete<T extends AxiosResponse>(config: PFRequestConfig<T>): Promise<T> {
     return this.request({ ...config, method: 'DELETE' })
   }
-  patch<T = any>(config: PFRequestConfig<T>) {
+  patch<T extends AxiosResponse>(config: PFRequestConfig<T>): Promise<T> {
     return this.request({ ...config, method: 'PATCH' })
   }
 }
