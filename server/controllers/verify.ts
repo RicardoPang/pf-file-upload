@@ -1,8 +1,8 @@
 import { type Context } from 'koa'
 import {
-  type UploadedFileControllerParams,
-  type UploadedFileControllerResponse,
-  type VefiryFileControllerParams,
+  type IUploadedFile,
+  type GetFileControllerResponse,
+  type IVefiryFileControllerParams,
   type VefiryFileControllerResponse
 } from '../utils/types'
 import fileSizesStore from '../utils/fileSizesStore'
@@ -24,7 +24,7 @@ const fnVerify: IMiddleware = async (
   ctx: Context,
   next: () => Promise<void>
 ) => {
-  const { filename, fileHash } = ctx.request.body as VefiryFileControllerParams
+  const { filename, fileHash } = ctx.request.body as IVefiryFileControllerParams
   if (!isValidString(fileHash)) {
     throw new HttpError(HttpStatus.PARAMS_ERROR, 'fileHash 不能为空')
   }
@@ -43,7 +43,7 @@ const fnVerify: IMiddleware = async (
   ctx.body = {
     code: 0,
     data: { exists: isExist, existsList: existsList }
-  } satisfies VefiryFileControllerResponse
+  } as VefiryFileControllerResponse
 
   await next()
 }
@@ -81,13 +81,13 @@ const fnGetFile: IMiddleware = async (
         totalSize: total,
         time: stat.mtime.toISOString(),
         hash: fileHash
-      } as UploadedFileControllerParams
+      } as IUploadedFile
     })
   const fileList = await Promise.all(fileListPromises)
   ctx.body = {
     code: 0,
     data: { files: fileList }
-  } satisfies UploadedFileControllerResponse
+  } as GetFileControllerResponse
 
   await next()
 }

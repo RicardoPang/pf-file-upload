@@ -1,7 +1,16 @@
 import { getFiles, merge, upload, verify } from '@/service/file/file'
 import { defineStore } from 'pinia'
-import type { IMerge, IUpload, IVerify } from '@/types/file'
 import type { IFileUploadState } from './type'
+import type {
+  GetFileControllerResponse,
+  IFileSlice,
+  IMergeChunksControllerParams,
+  IUploadChunkControllerParams,
+  IVefiryFileControllerParams,
+  MergeChunksControllerResponse,
+  UploadChunkControllerResponse,
+  VefiryFileControllerResponse
+} from '@/types/file'
 
 const useFileStore = defineStore('file', {
   state: (): IFileUploadState => ({
@@ -10,14 +19,26 @@ const useFileStore = defineStore('file', {
     files: []
   }),
   actions: {
-    async uploadChunkAction(file: IUpload, signal?: AbortSignal) {
-      const resp = await upload(file, signal)
+    async uploadChunkAction(
+      params: IUploadChunkControllerParams,
+      onProgress: (progress: number) => void,
+      chunks: IFileSlice[],
+      index: number,
+      signal?: AbortSignal
+    ) {
+      const resp = (await upload(
+        params,
+        onProgress,
+        chunks,
+        index,
+        signal
+      )) as UploadChunkControllerResponse
       if (resp.code !== 0) {
-        ElMessage.error(resp.data.message || `上传第${file.index}个切片失败`)
+        ElMessage.error(resp.message || `上传第${index}个切片失败`)
       }
     },
-    async verifyFileAction(file: IVerify) {
-      const resp = await verify(file)
+    async verifyFileAction(file: IVefiryFileControllerParams) {
+      const resp = (await verify(file)) as VefiryFileControllerResponse
       if (resp.code === 0) {
         this.exists = resp.data.exists
         this.existsList = resp.data.existsList
@@ -25,16 +46,16 @@ const useFileStore = defineStore('file', {
         ElMessage.error('校验文件是否已存在失败')
       }
     },
-    async mergeFileAction(file: IMerge) {
-      const resp = await merge(file)
+    async mergeFileAction(file: IMergeChunksControllerParams) {
+      const resp = (await merge(file)) as MergeChunksControllerResponse
       if (resp.code === 0) {
         ElMessage.success('上传成功')
       } else {
-        ElMessage.error(resp.data?.message || '上传失败')
+        ElMessage.error(resp.message || '上传失败')
       }
     },
     async getFilesAction() {
-      const resp = await getFiles()
+      const resp = (await getFiles()) as GetFileControllerResponse
       if (resp.code === 0) {
         this.files = resp.data.files
       } else {

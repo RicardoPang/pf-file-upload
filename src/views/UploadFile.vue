@@ -44,18 +44,17 @@
 import { ref } from 'vue'
 import type { UploadFile, UploadProps } from 'element-plus'
 import Worker from '../utils/hash.ts?worker'
-import type { FileSlice } from '@/utils/file'
 import { CHUNK_SIZE } from '@/const'
 import { ElMessage, ElUpload } from 'element-plus'
 import { Scheduler } from '@/utils/scheduler'
 import MainFile from '@/components/main-file/main-file.vue'
 import useFileStore from '@/store/file/file'
 import { storeToRefs } from 'pinia'
-import type { SaveChunkControllerParams } from '@/types/file'
+import type { IFileSlice, IUploadChunkControllerParams } from '@/types/file'
 
 const upload = ref<boolean>(true)
 const file = ref<UploadFile | null>(null)
-const fileChunks = ref<FileSlice[]>([])
+const fileChunks = ref<IFileSlice[]>([])
 const hash = ref<string>('')
 const uploadProgress = ref<number>(0)
 let controller: AbortController | null = null
@@ -67,7 +66,7 @@ fileStore.getFilesAction()
 const { files } = storeToRefs(fileStore)
 
 // 使用Web Worker进行hash计算的函数
-function calculateHash(fileChunks: FileSlice[]): Promise<string> {
+function calculateHash(fileChunks: IFileSlice[]): Promise<string> {
   return new Promise<string>((resolve, reject) => {
     const worker = new Worker()
     worker.postMessage({ chunks: fileChunks })
@@ -90,7 +89,7 @@ async function uploadChunks({
   hash,
   limit = 3
 }: {
-  chunks: FileSlice[]
+  chunks: IFileSlice[]
   hash: string
   limit?: number
 }) {
@@ -114,7 +113,7 @@ async function uploadChunks({
       fileHash: hash,
       filename: file.value?.name as string,
       size: file.value?.size
-    } as SaveChunkControllerParams
+    } as IUploadChunkControllerParams
 
     await scheduler.add(async () => {
       if (!upload.value) {
@@ -124,14 +123,12 @@ async function uploadChunks({
       const { signal } = controller
       try {
         await fileStore.uploadChunkAction(
-          {
-            formData: params,
-            onProgress: (progress: number) => {
-              uploadProgress.value = progress
-            },
-            chunks,
-            index: i
+          params,
+          (progress: number) => {
+            uploadProgress.value = progress
           },
+          chunks,
+          i,
           signal
         )
         uploadedChunksCount++
@@ -180,7 +177,7 @@ async function submitUpload() {
   }
 
   // 将文件切片
-  const chunks: FileSlice[] = []
+  const chunks: IFileSlice[] = []
   let cur = 0
   while (cur < file.value.raw!.size) {
     const slice = file.value.raw!.slice(cur, cur + CHUNK_SIZE)
@@ -227,9 +224,10 @@ async function handlePause() {
       fileHash: hash.value
     })
     const { exists, existsList } = storeToRefs(fileStore)
-    const newChunks = fileChunks.value.filter(
-      (item) => !existsList.value.includes(item.hash)
-    )
+    const newChunks = fileChunks.value.filter((item) => {
+      return !existsList.value.includes(item.hash || '') // Use includes with a default empty string for cases where hash is undefined
+    })
+    console.log('newChunks', newChunks)
     if (!exists.value) {
       await uploadChunks({
         chunks: newChunks,

@@ -1,14 +1,7 @@
-export interface IUploadFile {
-  hash?: string
-  name?: string
-  time?: string
-  totalSize?: number
-  uploadedSize?: number
-  size?: number
-}
+import type { IUploadedFile } from '@/types/file'
 
 export interface IFileUploadState {
   exists: boolean
-  existsList: any // 已上传切片列表
-  files: any[] // 已上传文件列表
+  existsList: string[] // 已上传切片列表
+  files: IUploadedFile[] // 已上传文件列表
 }

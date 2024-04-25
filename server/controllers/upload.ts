@@ -3,7 +3,7 @@ import { UPLOAD_DIR, extractExt, getChunkDir, isValidString } from '../utils'
 import fileSizesStore from '../utils/fileSizesStore'
 import { HttpError, HttpStatus } from '../utils/http-error'
 import {
-  type UploadChunkControllerParams,
+  type IUploadChunkControllerParams,
   type UploadChunkControllerResponse
 } from '../utils/types'
 import path from 'path'
@@ -38,7 +38,7 @@ const fnUpload: IMiddleware = async (
     hash,
     chunk,
     size
-  } as UploadChunkControllerParams
+  } as IUploadChunkControllerParams
 
   fileSizesStore.storeFileSize(fileHash, size)
   const ext = extractExt(params.filename!)
@@ -54,23 +54,26 @@ const fnUpload: IMiddleware = async (
   if (await fse.pathExists(filePath)) {
     ctx.body = {
       code: 1,
-      data: { hash: fileHash!, message: 'file exist' }
-    } satisfies UploadChunkControllerResponse
+      message: 'file exist',
+      data: { hash: fileHash }
+    } as UploadChunkControllerResponse
     return
   }
   // 切片存在直接返回
   if (await fse.pathExists(chunkPath)) {
     ctx.body = {
       code: 2,
-      data: { hash: fileHash!, message: 'chunk exist' }
-    } satisfies UploadChunkControllerResponse
+      message: 'chunk exist',
+      data: { hash: fileHash }
+    } as UploadChunkControllerResponse
     return
   }
   await fse.move(chunkFile.filepath, `${chunkDir}/${hash}`)
   ctx.body = {
     code: 0,
-    data: { hash: params.fileHash!, message: 'received file chunk' }
-  } satisfies UploadChunkControllerResponse
+    message: 'received file chunk',
+    data: { hash: params.fileHash }
+  } as UploadChunkControllerResponse
 
   await next()
 }

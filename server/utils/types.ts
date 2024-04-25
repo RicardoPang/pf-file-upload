@@ -4,11 +4,11 @@ export interface Response<T> {
   message?: string
 }
 
-export interface VefiryFileControllerParams {
+export interface IVefiryFileControllerParams {
   // 文件 hash 值
-  fileHash?: string
-  // 分片索引
-  filename?: string
+  fileHash: string
+  // 文件名
+  filename: string
 }
 
 export type VefiryFileControllerResponse = Response<{
@@ -16,44 +16,51 @@ export type VefiryFileControllerResponse = Response<{
   existsList: string[]
 }>
 
-export interface UploadedFileControllerParams {
-  name: string
-  uploadedSize: number
-  totalSize: number
-  time: string
-  hash: string
-}
-
-export type UploadedFileControllerResponse = Response<{
-  files: string[]
-}>
-
-export interface MergeChunksControllerParams {
-  filename?: string
-  size?: number
+export interface IMergeChunksControllerParams {
   // 文件 hash 值
-  fileHash?: string
+  fileHash: string
+  // 文件名
+  filename: string
+  // 切片大小
+  size?: number
 }
 
 export type MergeChunksControllerResponse = Response<{
-  message: string
+  // 文件 hash 值
   hash: string
 }>
 
-export interface UploadChunkControllerParams {
-  // 切片 hash 值
-  hash?: string
-  // 文件 hash 值
-  fileHash?: string
+export interface IUploadChunkControllerParams {
   // 分片内容
-  chunk?: Buffer
+  chunk: Buffer
+  // 切片 hash 值
+  hash: string
+  // 文件 hash 值
+  fileHash: string
   // 文件名
-  filename?: string
+  filename: string
   // 文件大小
-  size?: string
+  size: number
 }
 
 export type UploadChunkControllerResponse = Response<{
+  // 文件 hash 值
   hash: string
-  message: string
+}>
+
+export interface IUploadedFile {
+  // 文件名
+  name: string
+  // 文件已上传大小
+  uploadedSize: number
+  // 文件总大小
+  totalSize: number
+  // 操作时间
+  time: string
+  // 文件 hash 值
+  hash: string
+}
+
+export type GetFileControllerResponse = Response<{
+  files: IUploadedFile[]
 }>

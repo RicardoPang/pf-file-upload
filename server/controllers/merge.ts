@@ -1,7 +1,7 @@
 import { UPLOAD_DIR, extractExt, getChunkDir, isValidString } from '../utils'
 import { HttpError, HttpStatus } from '../utils/http-error'
 import type {
-  MergeChunksControllerParams,
+  IMergeChunksControllerParams,
   MergeChunksControllerResponse
 } from '../utils/types'
 import path from 'path'
@@ -57,7 +57,7 @@ const fnMerge: IMiddleware = async (
   next: () => Promise<void>
 ) => {
   const { filename, fileHash, size } = ctx.request
-    .body as MergeChunksControllerParams
+    .body as IMergeChunksControllerParams
   if (!isValidString(fileHash)) {
     throw new HttpError(HttpStatus.PARAMS_ERROR, 'fileHash 不能为空: ')
   }
@@ -69,8 +69,9 @@ const fnMerge: IMiddleware = async (
   await mergeFileChunk(filePath, fileHash!, size!)
   ctx.body = {
     code: 0,
-    data: { hash: fileHash!, message: 'file merged success' }
-  } satisfies MergeChunksControllerResponse
+    message: 'file merged success',
+    data: { hash: fileHash }
+  } as MergeChunksControllerResponse
 
   await next()
 }
