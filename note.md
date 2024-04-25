@@ -51,12 +51,4 @@
 
 1. 架构分层模糊，模块之间耦合度极高；
 2. 存在许多基础问题，如命名风格；
-3. 全局状态使用的非常随便，缺乏设计；
-
-- MergeChunksControllerResponse
-- export interface IUpload {
-  formData: SaveChunkControllerParams
-  onProgress: (progress: number) => void
-  chunks: FileSlice[]
-  index: number
-  }
+3. 全局状态使用的非常随便，缺乏设计
