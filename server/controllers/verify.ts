@@ -66,11 +66,13 @@ const fnGetFile: IMiddleware = async (
         fileHash = file.slice('chunkDir_'.length)
         const chunkDir = getChunkDir(fileHash)
         const chunks = await fse.readdir(chunkDir)
-        size = chunks.reduce((totalSize, chunk) => {
+        let totalSize = 0
+        for (const chunk of chunks) {
           const chunkPath = path.resolve(chunkDir, chunk)
-          const stat = fse.statSync(chunkPath)
-          return totalSize + stat.size
-        }, 0)
+          const stat = await fse.stat(chunkPath)
+          totalSize += stat.size
+        }
+        size = totalSize
       } else {
         fileHash = file.slice(0, file.length - ext.length)
       }

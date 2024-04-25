@@ -2,14 +2,10 @@ import { getFiles, merge, upload, verify } from '@/service/file/file'
 import { defineStore } from 'pinia'
 import type { IFileUploadState } from './type'
 import type {
-  GetFileControllerResponse,
   IFileSlice,
   IMergeChunksControllerParams,
   IUploadChunkControllerParams,
-  IVefiryFileControllerParams,
-  MergeChunksControllerResponse,
-  UploadChunkControllerResponse,
-  VefiryFileControllerResponse
+  IVefiryFileControllerParams
 } from '@/types/file'
 
 const useFileStore = defineStore('file', {
@@ -26,19 +22,13 @@ const useFileStore = defineStore('file', {
       index: number,
       signal?: AbortSignal
     ) {
-      const resp = (await upload(
-        params,
-        onProgress,
-        chunks,
-        index,
-        signal
-      )) as UploadChunkControllerResponse
+      const resp = await upload(params, onProgress, chunks, index, signal)
       if (resp.code !== 0) {
         ElMessage.error(resp.message || `上传第${index}个切片失败`)
       }
     },
     async verifyFileAction(file: IVefiryFileControllerParams) {
-      const resp = (await verify(file)) as VefiryFileControllerResponse
+      const resp = await verify(file)
       if (resp.code === 0) {
         this.exists = resp.data.exists
         this.existsList = resp.data.existsList
@@ -47,7 +37,7 @@ const useFileStore = defineStore('file', {
       }
     },
     async mergeFileAction(file: IMergeChunksControllerParams) {
-      const resp = (await merge(file)) as MergeChunksControllerResponse
+      const resp = await merge(file)
       if (resp.code === 0) {
         ElMessage.success('上传成功')
       } else {
@@ -55,7 +45,7 @@ const useFileStore = defineStore('file', {
       }
     },
     async getFilesAction() {
-      const resp = (await getFiles()) as GetFileControllerResponse
+      const resp = await getFiles()
       if (resp.code === 0) {
         this.files = resp.data.files
       } else {

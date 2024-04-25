@@ -1,11 +1,11 @@
 <template>
   <div class="file-item">
     <div class="file-item-top">
-      <span>{{ fileName }} {{ fileSize }}</span>
+      <span>{{ file.name }} {{ fileSize(file.totalSize) }}</span>
     </div>
     <div class="file-item-progress">
       <el-progress
-        :percentage="progress > 100 ? 100 : progress"
+        :percentage="Math.min(fileProgress(file), 100)"
         :show-text="false"
         :color="'#265AEB'"
         :stroke-width="10"
@@ -13,26 +13,44 @@
       </el-progress>
     </div>
     <div class="file-item-value">
-      <span class="percentage-value">{{ progress }}% done</span>
+      <span class="percentage-value">{{ fileProgress(file) }}% done</span>
     </div>
   </div>
 </template>
 
 <script setup>
-defineProps({
-  fileName: {
-    type: String,
+const props = defineProps({
+  file: {
+    type: Object,
     default: null
-  },
-  fileSize: {
-    type: String,
-    default: '0'
   },
   progress: {
     type: Number,
-    default: 0
+    default: 0,
+    required: false
   }
 })
+
+function fileSize(size) {
+  if (!size) {
+    return ''
+  }
+  size = +size
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  let i = 0
+  while (size >= 1024 && i < sizes.length - 1) {
+    size /= 1024
+    i++
+  }
+  return `${size.toFixed(2)} ${sizes[i]}`
+}
+
+const fileProgress = (file) => {
+  if (props.progress) {
+    return props.progress
+  }
+  return +((file.uploadedSize / file.totalSize) * 100).toFixed(2)
+}
 </script>
 
 <style lang="less" scoped>

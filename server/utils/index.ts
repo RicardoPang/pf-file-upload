@@ -8,12 +8,11 @@ export const isPositiveInter = (s) =>
 
 export const isUndefined = (s) => typeof s === 'undefined'
 
-// 大文件存储目录
+// 大文件存储目录（有忽略）
 export const UPLOAD_DIR = path.resolve(__dirname, '..', 'target')
 
 // 提取后缀名
-export const extractExt = (filename: string): string =>
-  filename.slice(filename.lastIndexOf('.'), filename.length)
+export const extractExt = (filename: string): string => path.extname(filename)
 
 // 返回已经上传切片名列表
 export const getUploadedList = async (fileHash: string) =>

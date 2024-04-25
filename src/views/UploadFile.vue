@@ -31,7 +31,11 @@
     </div>
     <div class="file-wrapper">
       <template v-if="file">
-        <MainFile title="上传中" :file="file" :progress="uploadProgress" />
+        <MainFile
+          title="上传中"
+          :fileList="[file]"
+          :progress="uploadProgress"
+        />
       </template>
       <template v-if="files && files.length">
         <MainFile title="已上传" :fileList="files" />

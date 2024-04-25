@@ -3,6 +3,5 @@ export const PORT: number = process.env.PORT
   : 3000
 
 export const HEADERS = {
-  'Content-Type': 'application/json',
-  'X-Requested-With': 'XMLHttpRequest'
+  'Content-Type': 'application/json'
 }

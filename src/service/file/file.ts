@@ -1,8 +1,12 @@
 import type {
+  GetFileControllerResponse,
   IFileSlice,
   IMergeChunksControllerParams,
   IUploadChunkControllerParams,
-  IVefiryFileControllerParams
+  IVefiryFileControllerParams,
+  MergeChunksControllerResponse,
+  UploadChunkControllerResponse,
+  VefiryFileControllerResponse
 } from '@/types/file'
 import pfRequest from '..'
 
@@ -37,25 +41,25 @@ export function upload(
       onProgress(Number(totalProgress.toFixed(2)))
     },
     signal
-  })
+  }) as Promise<UploadChunkControllerResponse>
 }
 
 export function verify(params: IVefiryFileControllerParams) {
   return pfRequest.post({
     url: '/api/verify',
     data: params
-  })
+  }) as Promise<VefiryFileControllerResponse>
 }
 
 export function merge(params: IMergeChunksControllerParams) {
   return pfRequest.post({
     url: '/api/merge',
     data: params
-  })
+  }) as Promise<MergeChunksControllerResponse>
 }
 
 export function getFiles() {
   return pfRequest.get({
     url: '/api/files'
-  })
+  }) as Promise<GetFileControllerResponse>
 }

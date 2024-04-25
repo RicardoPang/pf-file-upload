@@ -44,3 +44,5 @@ const localCache = new Cache(CacheType.Local)
 const sessionCache = new Cache(CacheType.Session)
 
 export { localCache, sessionCache }
+
+// 暂时不用

@@ -2,20 +2,12 @@
   <div class="main-file">
     <h2 class="file-title">{{ title }}</h2>
     <div class="file-container">
-      <template v-if="file">
-        <fileItem
-          :fileName="file.name"
-          :fileSize="fileSize(file)"
+      <template v-if="fileList && fileList.length">
+        <FileItem
+          v-for="(file, index) in fileList"
+          :key="index"
+          :file="file"
           :progress="progress"
-        />
-      </template>
-      <template v-else-if="fileList && fileList.length">
-        <fileItem
-          v-for="file in fileList"
-          :key="file.hash"
-          :fileName="file.name"
-          :fileSize="fileSize(file)"
-          :progress="fileProgress(file)"
         />
       </template>
     </div>
@@ -24,55 +16,25 @@
 
 <script setup lang="ts">
 import type { UploadFile } from 'element-plus'
-import fileItem from './c-cpns/file-item.vue'
 import type { IUploadedFile } from '@/types/file'
+import FileItem from './c-cpns/file-item.vue'
 
-export interface IUploadFile {
-  hash: string
-  name: string
-  time: string
-  size: number
-  totalSize: number
-  uploadedSize: number
-}
-
-defineProps({
+const props = defineProps({
   title: {
     type: String,
     default: ''
   },
-  file: {
-    type: Object as () => UploadFile,
-    default: null
-  },
   progress: {
     type: Number,
-    default: 0
+    default: 0,
+    required: false
   },
   fileList: {
-    type: Array as () => IUploadedFile[],
+    type: Array as () => (IUploadedFile | UploadFile)[],
     default: () => []
   }
 })
-
-function fileSize(file: any) {
-  let size = file.size ? file.size : file.totalSize
-  if (!size) {
-    return ''
-  }
-  size = +size
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  let i = 0
-  while (size >= 1024 && i < sizes.length - 1) {
-    size /= 1024
-    i++
-  }
-  return `${size.toFixed(2)} ${sizes[i]}`
-}
-
-const fileProgress = (file: any) => {
-  return +((file.uploadedSize / file.totalSize) * 100).toFixed(2)
-}
+console.log(props.fileList)
 </script>
 
 <style lang="less" scoped>
