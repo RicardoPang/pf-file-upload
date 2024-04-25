@@ -16,7 +16,8 @@ const fnUpload: IMiddleware = async (
   ctx: Context,
   next: () => Promise<void>
 ) => {
-  const { filename, fileHash, hash, size } = ctx.request.body
+  const { filename, fileHash, hash, size } = ctx.request
+    .body as IUploadChunkControllerParams
 
   const chunkFile = ctx.request.files?.chunk
   if (!chunkFile || Array.isArray(chunkFile)) {
