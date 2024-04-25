@@ -18,11 +18,19 @@ const useFileStore = defineStore('file', {
     async uploadChunkAction(
       params: IUploadChunkControllerParams,
       onProgress: (progress: number) => void,
+      onTick: (index: number, percent: number) => void,
       chunks: IFileSlice[],
       index: number,
       signal?: AbortSignal
     ) {
-      const resp = await upload(params, onProgress, chunks, index, signal)
+      const resp = await upload(
+        params,
+        onProgress,
+        onTick,
+        chunks,
+        index,
+        signal
+      )
       if (resp.code !== 0) {
         ElMessage.error(resp.message || `上传第${index}个切片失败`)
       }

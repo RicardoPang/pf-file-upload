@@ -31,11 +31,7 @@
     </div>
     <div class="file-wrapper">
       <template v-if="file">
-        <MainFile
-          title="上传中"
-          :fileList="[file]"
-          :progress="uploadProgress"
-        />
+        <MainFile title="上传中" :fileList="[file]" />
       </template>
       <template v-if="files && files.length">
         <MainFile title="已上传" :fileList="files" />
@@ -60,7 +56,6 @@ const upload = ref<boolean>(true)
 const file = ref<UploadFile | null>(null)
 const fileChunks = ref<IFileSlice[]>([])
 const hash = ref<string>('')
-const uploadProgress = ref<number>(0)
 let controller: AbortController | null = null
 
 // 发起数据请求
@@ -129,8 +124,12 @@ async function uploadChunks({
         await fileStore.uploadChunkAction(
           params,
           (progress: number) => {
-            uploadProgress.value = progress
+            // 将这个进度赋值给文件file file.value
+            // chunks[i].percentage = progress
+            console.log(progress)
+            file.value!.percentage = progress
           },
+          onTick,
           chunks,
           i,
           signal
@@ -152,6 +151,10 @@ async function uploadChunks({
       }
     })
   }
+
+  function onTick(index: number, percent: number) {
+    chunks[index].percentage = percent
+  }
 }
 
 // 合并切片请求
@@ -170,7 +173,6 @@ async function mergeRequest() {
 // 文件上传
 const handleChange: UploadProps['onChange'] = (uploadFile) => {
   file.value = uploadFile
-  uploadProgress.value = 0
 }
 
 // 文件上传服务器

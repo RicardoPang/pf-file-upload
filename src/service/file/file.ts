@@ -13,6 +13,7 @@ import pfRequest from '..'
 export function upload(
   params: IUploadChunkControllerParams,
   onProgress: (progress: number) => void,
+  onTick: (index: number, percent: number) => void,
   chunks: IFileSlice[],
   index: number,
   signal?: AbortSignal
@@ -34,9 +35,9 @@ export function upload(
     onUploadProgress: (progressEvent) => {
       const { loaded, total } = progressEvent
       const percent = Math.floor((loaded / (total || 0)) * 100)
-      chunks[chunks.indexOf(chunks[index])].progress = percent
+      onTick(index, percent)
       const totalProgress =
-        chunks.reduce((sum, chunk) => sum + (chunk.progress || 0), 0) /
+        chunks.reduce((sum, chunk) => sum + (chunk.percentage || 0), 0) /
         chunks.length
       onProgress(Number(totalProgress.toFixed(2)))
     },

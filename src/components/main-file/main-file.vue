@@ -3,12 +3,7 @@
     <h2 class="file-title">{{ title }}</h2>
     <div class="file-container">
       <template v-if="fileList && fileList.length">
-        <FileItem
-          v-for="(file, index) in fileList"
-          :key="index"
-          :file="file"
-          :progress="progress"
-        />
+        <FileItem v-for="file in fileList" :key="getKey(file)" :file="file" />
       </template>
     </div>
   </div>
@@ -17,24 +12,22 @@
 <script setup lang="ts">
 import type { UploadFile } from 'element-plus'
 import type { IUploadedFile } from '@/types/file'
-import FileItem from './c-cpns/file-item.vue'
+import FileItem from './cpns/file-item.vue'
 
-const props = defineProps({
+defineProps({
   title: {
     type: String,
     default: ''
-  },
-  progress: {
-    type: Number,
-    default: 0,
-    required: false
   },
   fileList: {
     type: Array as () => (IUploadedFile | UploadFile)[],
     default: () => []
   }
 })
-console.log(props.fileList)
+
+const getKey = (file: IUploadedFile | UploadFile) => {
+  return 'hash' in file ? file.hash : file.uid
+}
 </script>
 
 <style lang="less" scoped>

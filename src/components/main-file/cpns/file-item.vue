@@ -1,7 +1,7 @@
 <template>
   <div class="file-item">
     <div class="file-item-top">
-      <span>{{ file.name }} {{ fileSize(file.totalSize) }}</span>
+      <span>{{ file.name }} {{ fileSize(file) }}</span>
     </div>
     <div class="file-item-progress">
       <el-progress
@@ -31,7 +31,13 @@ const props = defineProps({
   }
 })
 
-function fileSize(size) {
+function fileSize(file) {
+  let size = 0
+  if (file.totalSize) {
+    size = file.totalSize
+  } else if (file.size) {
+    size = file.size
+  }
   if (!size) {
     return ''
   }
@@ -46,10 +52,10 @@ function fileSize(size) {
 }
 
 const fileProgress = (file) => {
-  if (props.progress) {
-    return props.progress
+  if (file.uploadedSize && file.totalSize) {
+    return +((file.uploadedSize / file.totalSize) * 100).toFixed(2)
   }
-  return +((file.uploadedSize / file.totalSize) * 100).toFixed(2)
+  return +file.percentage
 }
 </script>
 

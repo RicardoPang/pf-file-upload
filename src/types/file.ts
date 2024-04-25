@@ -69,5 +69,5 @@ export interface IFileSlice {
   chunk: Blob
   size: number
   hash?: string
-  progress?: number
+  percentage?: number
 }
