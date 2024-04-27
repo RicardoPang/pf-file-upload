@@ -23,13 +23,10 @@ const props = defineProps({
   file: {
     type: Object,
     default: null
-  },
-  progress: {
-    type: Number,
-    default: 0,
-    required: false
   }
 })
+
+console.log(props.file)
 
 function fileSize(file) {
   let size = 0

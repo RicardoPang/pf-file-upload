@@ -2,7 +2,7 @@
   <div class="main-file">
     <h2 class="file-title">{{ title }}</h2>
     <div class="file-container">
-      <template v-if="fileList && fileList.length">
+      <template v-if="fileList?.length > 0">
         <FileItem v-for="file in fileList" :key="getKey(file)" :file="file" />
       </template>
     </div>

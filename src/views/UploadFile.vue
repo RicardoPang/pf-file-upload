@@ -33,7 +33,7 @@
       <template v-if="file">
         <MainFile title="上传中" :fileList="[file]" />
       </template>
-      <template v-if="files && files.length">
+      <template v-if="files?.length > 0">
         <MainFile title="已上传" :fileList="files" />
       </template>
     </div>
@@ -121,19 +121,7 @@ async function uploadChunks({
       controller = new AbortController()
       const { signal } = controller
       try {
-        await fileStore.uploadChunkAction(
-          params,
-          (progress: number) => {
-            // 将这个进度赋值给文件file file.value
-            // chunks[i].percentage = progress
-            console.log(progress)
-            file.value!.percentage = progress
-          },
-          onTick,
-          chunks,
-          i,
-          signal
-        )
+        await fileStore.uploadChunkAction(params, onTick, i, signal)
         uploadedChunksCount++
       } catch (error: any) {
         if (error.name === 'AbortError') {
@@ -154,6 +142,10 @@ async function uploadChunks({
 
   function onTick(index: number, percent: number) {
     chunks[index].percentage = percent
+    const totalProgress =
+      chunks.reduce((sum, chunk) => sum + (chunk.percentage || 0), 0) /
+      chunks.length
+    file.value!.percentage = Number(totalProgress.toFixed(2))
   }
 }
 

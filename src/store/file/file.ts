@@ -2,7 +2,6 @@ import { getFiles, merge, upload, verify } from '@/service/file/file'
 import { defineStore } from 'pinia'
 import type { IFileUploadState } from './type'
 import type {
-  IFileSlice,
   IMergeChunksControllerParams,
   IUploadChunkControllerParams,
   IVefiryFileControllerParams
@@ -17,20 +16,11 @@ const useFileStore = defineStore('file', {
   actions: {
     async uploadChunkAction(
       params: IUploadChunkControllerParams,
-      onProgress: (progress: number) => void,
       onTick: (index: number, percent: number) => void,
-      chunks: IFileSlice[],
       index: number,
       signal?: AbortSignal
     ) {
-      const resp = await upload(
-        params,
-        onProgress,
-        onTick,
-        chunks,
-        index,
-        signal
-      )
+      const resp = await upload(params, onTick, index, signal)
       if (resp.code !== 0) {
         ElMessage.error(resp.message || `上传第${index}个切片失败`)
       }

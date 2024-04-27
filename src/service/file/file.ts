@@ -1,6 +1,5 @@
 import type {
   GetFileControllerResponse,
-  IFileSlice,
   IMergeChunksControllerParams,
   IUploadChunkControllerParams,
   IVefiryFileControllerParams,
@@ -12,9 +11,7 @@ import pfRequest from '..'
 
 export function upload(
   params: IUploadChunkControllerParams,
-  onProgress: (progress: number) => void,
   onTick: (index: number, percent: number) => void,
-  chunks: IFileSlice[],
   index: number,
   signal?: AbortSignal
 ) {
@@ -36,10 +33,6 @@ export function upload(
       const { loaded, total } = progressEvent
       const percent = Math.floor((loaded / (total || 0)) * 100)
       onTick(index, percent)
-      const totalProgress =
-        chunks.reduce((sum, chunk) => sum + (chunk.percentage || 0), 0) /
-        chunks.length
-      onProgress(Number(totalProgress.toFixed(2)))
     },
     signal
   }) as Promise<UploadChunkControllerResponse>
