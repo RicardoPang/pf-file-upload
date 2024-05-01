@@ -71,3 +71,11 @@ export interface IFileSlice {
   hash?: string
   percentage?: number
 }
+
+export interface IUploadChunkParams {
+  chunks: IFileSlice[]
+  hash: string
+  totalChunksCount: number
+  uploadedChunks: number
+  limit?: number
+}

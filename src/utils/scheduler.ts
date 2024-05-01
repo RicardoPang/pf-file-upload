@@ -18,14 +18,9 @@ export class Scheduler {
     }
     this.runCounts++
     const task = this.queue.shift()!
-    task()
-      .then(() => {
-        this.runCounts--
-        this.run()
-      })
-      .catch(() => {
-        this.runCounts--
-        this.run()
-      })
+    task().finally(() => {
+      this.runCounts--
+      this.run()
+    })
   }
 }

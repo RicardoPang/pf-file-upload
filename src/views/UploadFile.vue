@@ -43,20 +43,24 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import type { UploadFile, UploadProps } from 'element-plus'
-import Worker from '../utils/hash.ts?worker'
+import HashWorker from '../utils/hash.ts?worker'
 import { CHUNK_SIZE } from '@/const'
 import { ElMessage, ElUpload } from 'element-plus'
 import { Scheduler } from '@/utils/scheduler'
 import MainFile from '@/components/main-file/main-file.vue'
 import useFileStore from '@/store/file/file'
 import { storeToRefs } from 'pinia'
-import type { IFileSlice, IUploadChunkControllerParams } from '@/types/file'
+import type {
+  IFileSlice,
+  IUploadChunkControllerParams,
+  IUploadChunkParams
+} from '@/types/file'
 
 const upload = ref<boolean>(true)
 const file = ref<UploadFile | null>(null)
 const fileChunks = ref<IFileSlice[]>([])
 const hash = ref<string>('')
-let controller: AbortController | null = null
+const controllersMap = new Map<number, AbortController>()
 
 // 发起数据请求
 const fileStore = useFileStore()
@@ -67,7 +71,7 @@ const { files } = storeToRefs(fileStore)
 // 使用Web Worker进行hash计算的函数
 function calculateHash(fileChunks: IFileSlice[]): Promise<string> {
   return new Promise<string>((resolve, reject) => {
-    const worker = new Worker()
+    const worker = new HashWorker()
     worker.postMessage({ chunks: fileChunks })
     worker.onmessage = (e) => {
       const { hash } = e.data
@@ -86,12 +90,10 @@ function calculateHash(fileChunks: IFileSlice[]): Promise<string> {
 async function uploadChunks({
   chunks,
   hash,
+  totalChunksCount,
+  uploadedChunks,
   limit = 3
-}: {
-  chunks: IFileSlice[]
-  hash: string
-  limit?: number
-}) {
+}: IUploadChunkParams) {
   const scheduler = new Scheduler(limit)
   const totalChunks = chunks.length
   let uploadedChunksCount = 0
@@ -114,39 +116,60 @@ async function uploadChunks({
       size: file.value?.size
     } as IUploadChunkControllerParams
 
-    await scheduler.add(async () => {
-      if (!upload.value) {
-        return
-      }
-      controller = new AbortController()
+    scheduler.add(() => {
+      const controller = new AbortController()
+      controllersMap.set(i, controller)
       const { signal } = controller
-      try {
-        await fileStore.uploadChunkAction(params, onTick, i, signal)
-        uploadedChunksCount++
-      } catch (error: any) {
-        if (error.name === 'AbortError') {
-          console.log('上传被取消')
-          return
-        }
-        throw error
-      } finally {
-        controller = null
+
+      console.log(`开始上传切片 ${i}`)
+      if (!upload.value) {
+        return Promise.reject('上传暂停')
       }
 
-      // 判断所有切片都已上传完成后，调用mergeRequest方法
-      if (uploadedChunksCount === totalChunks) {
-        mergeRequest()
-      }
+      return fileStore
+        .uploadChunkAction(params, onTick, i, signal)
+        .then(() => {
+          console.log(`完成切片的上传 ${i}`)
+          uploadedChunksCount++
+          // 判断所有切片都已上传完成后，调用mergeRequest方法
+          if (uploadedChunksCount === totalChunks) {
+            mergeRequest()
+          }
+        })
+        .catch((error) => {
+          if (error.name === 'AbortError') {
+            console.log('上传被取消')
+          } else {
+            throw error
+          }
+        })
+        .finally(() => {
+          // 完成后将控制器从map中移除
+          controllersMap.delete(i)
+        })
     })
   }
 
   function onTick(index: number, percent: number) {
     chunks[index].percentage = percent
+
+    const newChunksProgress = chunks.reduce(
+      (sum, chunk) => sum + (chunk.percentage || 0),
+      0
+    )
     const totalProgress =
-      chunks.reduce((sum, chunk) => sum + (chunk.percentage || 0), 0) /
-      chunks.length
+      (newChunksProgress + uploadedChunks * 100) / totalChunksCount
+
     file.value!.percentage = Number(totalProgress.toFixed(2))
   }
+}
+
+function abortAll() {
+  controllersMap.forEach((controller, index) => {
+    console.log(`Aborting upload for chunk ${index}`)
+    controller.abort()
+  })
+  controllersMap.clear()
 }
 
 // 合并切片请求
@@ -202,7 +225,9 @@ async function submitUpload() {
   if (!exists.value) {
     await uploadChunks({
       chunks,
-      hash: hash.value
+      hash: hash.value,
+      totalChunksCount: fileChunks.value.length,
+      uploadedChunks: 0
     })
   } else {
     ElMessage.success('秒传: 文件上传成功')
@@ -223,23 +248,22 @@ async function handlePause() {
     })
     const { exists, existsList } = storeToRefs(fileStore)
     const newChunks = fileChunks.value.filter((item) => {
-      return !existsList.value.includes(item.hash || '') // Use includes with a default empty string for cases where hash is undefined
+      return !existsList.value.includes(item.hash || '')
     })
     console.log('newChunks', newChunks)
     if (!exists.value) {
       await uploadChunks({
         chunks: newChunks,
-        hash: hash.value
+        hash: hash.value,
+        totalChunksCount: fileChunks.value.length,
+        uploadedChunks: fileChunks.value.length - newChunks.length
       })
     } else {
       ElMessage.success('秒传: 文件上传成功')
     }
   } else {
     console.log('暂停上传')
-    if (controller) {
-      controller.abort()
-      controller = null
-    }
+    abortAll()
   }
 }
 </script>
